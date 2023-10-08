@@ -1,0 +1,11 @@
+D:\tryProject\TryJson\bin\Debug\TryJson.exe.config
+D:\tryProject\TryJson\bin\Debug\TryJson.exe
+D:\tryProject\TryJson\bin\Debug\TryJson.pdb
+D:\tryProject\TryJson\bin\Debug\Newtonsoft.Json.dll
+D:\tryProject\TryJson\bin\Debug\Newtonsoft.Json.xml
+D:\tryProject\TryJson\obj\Debug\TryJson.csproj.AssemblyReference.cache
+D:\tryProject\TryJson\obj\Debug\TryJson.csproj.SuggestedBindingRedirects.cache
+D:\tryProject\TryJson\obj\Debug\TryJson.csproj.CoreCompileInputs.cache
+D:\tryProject\TryJson\obj\Debug\TryJson.csproj.CopyComplete
+D:\tryProject\TryJson\obj\Debug\TryJson.exe
+D:\tryProject\TryJson\obj\Debug\TryJson.pdb
