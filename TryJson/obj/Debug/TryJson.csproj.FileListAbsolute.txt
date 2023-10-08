@@ -9,3 +9,13 @@ D:\tryProject\TryJson\obj\Debug\TryJson.csproj.CoreCompileInputs.cache
 D:\tryProject\TryJson\obj\Debug\TryJson.csproj.CopyComplete
 D:\tryProject\TryJson\obj\Debug\TryJson.exe
 D:\tryProject\TryJson\obj\Debug\TryJson.pdb
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\TryJson.exe.config
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\TryJson.exe
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\TryJson.pdb
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\Newtonsoft.Json.dll
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\Newtonsoft.Json.xml
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.csproj.AssemblyReference.cache
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.csproj.CoreCompileInputs.cache
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.csproj.CopyComplete
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.exe
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.pdb
