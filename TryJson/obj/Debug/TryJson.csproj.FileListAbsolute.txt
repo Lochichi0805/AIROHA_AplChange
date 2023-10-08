@@ -19,3 +19,5 @@ E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.csproj.CoreCompile
 E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.csproj.CopyComplete
 E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.exe
 E:\NewtypeProjects\AIROHA_AplChange\TryJson\obj\Debug\TryJson.pdb
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\Dapper.dll
+E:\NewtypeProjects\AIROHA_AplChange\TryJson\bin\Debug\Dapper.xml
