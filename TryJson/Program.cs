@@ -18,12 +18,46 @@ namespace TryJson
         {
             // 讀取工號對照表
             Console.WriteLine("Load account mapping started.");
-            var dicAccount = ReadAccountMappingList();
+            Dictionary<string, string> dicAccount;
+            if (IsDev())
+            {
+                // 測試資料
+                dicAccount = new Dictionary<string, string>();
+                dicAccount.Add("60243", "102243");
+                dicAccount.Add("60150", "102150");
+                dicAccount.Add("61076", "103076");
+                dicAccount.Add("61521", "103521");
+                dicAccount.Add("60942", "102942");
+                dicAccount.Add("60948", "102948");
+                dicAccount.Add("60936", "102936");
+                dicAccount.Add("61229", "103229");
+            }
+            else
+            {
+                dicAccount = ReadAccountMappingList();
+            }
             Console.WriteLine("Load account mapping completed. Loaded Rows: " + dicAccount.Count);
 
             // 讀取 NUP_UI_RenderData 
             Console.WriteLine("Load RenderData started.");
-            var renderList = ReadRenderDataList();
+            List<NUP_UI_RenderData> renderList;
+            if (IsDev())
+            {
+                renderList = new List<NUP_UI_RenderData>()
+                {
+                    new NUP_UI_RenderData()
+                    {
+                        RequisitionID = Guid.NewGuid().ToString(),
+                        UniqueID = Guid.NewGuid().ToString(),
+                        RenderData = GetFakeData(),
+                        BPMProfileUniqueID = "AIROHA06"
+                    }
+                };
+            }
+            else
+            {
+                renderList = ReadRenderDataList();
+            }
             Console.WriteLine("Load RenderData completed. Loaded Rows: " + renderList.Count);
             Console.WriteLine();
 
@@ -46,7 +80,9 @@ namespace TryJson
 
 
                 // 回寫 RenderData
-                WriteNupRenderData(item);
+                // 開發版不回寫
+                if (!IsDev())
+                    WriteNupRenderData(item);
             }
 
             if (IsDev())
@@ -201,53 +237,33 @@ namespace TryJson
         /// <returns></returns>
         private static Dictionary<string, string> ReadAccountMappingList()
         {
-            if (IsDev())
+            // 取得工號對照表
+            var dbCommand =
+                $@" 
+                SELECT
+                    [Ori_Account],
+                    [New_Account],
+                    [DisplayName],
+                    [MidInitial],
+                    [HireDate]
+                FROM [AIROHA_MAPPING_ACCOUNT]
+                ";
+
+            try
             {
-                Dictionary<string, string> names = new Dictionary<string, string>();
-
-                // 測試資料
-                names.Add("60243", "102243");
-                names.Add("60150", "102150");
-                names.Add("61076", "103076");
-                names.Add("61521", "103521");
-                names.Add("60942", "102942");
-                names.Add("60948", "102948");
-                names.Add("60936", "102936");
-                names.Add("61229", "103229");
-
-                return names;
+                // 連線至資料庫
+                string connStr = GetConnString();
+                using (var conn = new SqlConnection(connStr))
+                {
+                    var result = conn.Query<AIROHA_MAPPING_ACCOUNT>(dbCommand);
+                    var dic = result.ToDictionary(obj => obj.Ori_Account, obj => obj.New_Account);
+                    return dic;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                // 取得工號對照表
-                var dbCommand =
-                   $@" 
-                    SELECT
-                        [Ori_Account],
-                        [New_Account],
-                        [DisplayName],
-                        [MidInitial],
-                        [HireDate]
-                    FROM [AIROHA_MAPPING_ACCOUNT]
-                    ";
-
-
-                try
-                {
-                    // 連線至資料庫
-                    string connStr = GetConnString();
-                    using (var conn = new SqlConnection(connStr))
-                    {
-                        var result = conn.Query<AIROHA_MAPPING_ACCOUNT>(dbCommand);
-                        var dic = result.ToDictionary(obj => obj.Ori_Account, obj => obj.New_Account);
-                        return dic;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogService.KeepException(ex);
-                    throw;
-                }
+                LogService.KeepException(ex);
+                throw;
             }
         }
 
@@ -257,20 +273,6 @@ namespace TryJson
         /// <returns></returns>
         private static List<NUP_UI_RenderData> ReadRenderDataList()
         {
-            if (IsDev())
-            {
-                return new List<NUP_UI_RenderData>()
-                {
-                    new NUP_UI_RenderData()
-                    {
-                        RequisitionID = Guid.NewGuid().ToString(),
-                        UniqueID = Guid.NewGuid().ToString(),
-                        RenderData = GetFakeData(),
-                        BPMProfileUniqueID = "AIROHA06"
-                    }
-                };
-            }
-
             // 讀取資料
             var totalRow = TakeRows();
             string topRow = "";
@@ -313,10 +315,6 @@ namespace TryJson
         /// <param name="model"></param>
         private static void WriteNupRenderData(NUP_UI_RenderData model)
         {
-            // 開發版不回寫
-            if (IsDev())
-                return;
-            
             // UPDATE
             var dbCommand =
                 $@" 
@@ -345,7 +343,7 @@ namespace TryJson
         }
         #endregion
 
-        #region Helper Method
+        #region Config Method
         private static string GetConnString(string dbName = "BPMPro")
         {
             if (string.Compare("BPMPro", dbName, true) == 0)
