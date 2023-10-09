@@ -15,7 +15,6 @@ namespace TryJson.Models
         {
             this.ReqID = reqID;
             this.Path = path;
-            this.ColumnName = columnName;
             this.OrgValue = orgValue;
             this.NewValue = newValue;
         }
@@ -23,7 +22,6 @@ namespace TryJson.Models
 
         public string ReqID { get; set; }
         public string Path { get; set; }
-        public string ColumnName { get; set; }
         public string OrgValue { get; set; }
         public string NewValue { get; set; }
 

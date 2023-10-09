@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using CsvHelper;
 using Dapper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TryJson.Models;
+
 
 namespace TryJson
 {
@@ -17,6 +20,7 @@ namespace TryJson
 
         static void Main(string[] args)
         {
+
             // 讀取工號對照表
             Console.WriteLine("Load account mapping started.");
             Dictionary<string, string> dicAccount;
@@ -72,7 +76,7 @@ namespace TryJson
                 var jtoken = root["data"]; // 跳至根節點
 
                 // 解析 JSON ，並取得要替換的目標
-                var resultList = ParseJson(item.RequisitionID, jtoken, dicAccount);
+                var resultList = ParseJson(item.RequisitionID, jtoken, dicAccount).ToList();
                 foreach (var result in resultList)
                 {
                     Console.WriteLine($"{result.Path} 可能包含工號，原始值為： {result.OrgValue} ，即將換成 {result.NewValue} ");
@@ -84,6 +88,8 @@ namespace TryJson
                         jval.Value = result.NewValue;
                     }
                 }
+
+                WriteFile(item.RequisitionID, item.BPMProfileUniqueID, resultList);
 
 
                 // 回寫 RenderData
@@ -100,6 +106,7 @@ namespace TryJson
                     WriteNupRenderData(item);
                 }
             }
+
 
             if (IsDev())
             {
@@ -400,6 +407,26 @@ namespace TryJson
                 return tempInt;
             else
                 return -1;
+        }
+        #endregion
+
+        #region Output csv
+        private static void WriteFile(string reqID, string formName, List<ResultObject> list)
+        {
+            string cDate = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string folder = Environment.CurrentDirectory;
+            string file = "Output" + cDate + ".csv";
+            string path = Path.Combine(folder, file);
+
+            using (var writer = new StreamWriter(file))
+            {
+                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                {
+                    csv.WriteRecords(list);
+                }
+            }
+
+            Console.WriteLine(path);
         }
         #endregion
     }
