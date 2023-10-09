@@ -14,6 +14,7 @@ namespace TryJson
 {
     internal class Program
     {
+     
         static void Main(string[] args)
         {
             // 讀取工號對照表
@@ -82,7 +83,9 @@ namespace TryJson
                 // 回寫 RenderData
                 // 開發版不回寫
                 if (!IsDev())
-                    WriteNupRenderData(item);
+                {
+                    //WriteNupRenderData(item);
+                }
             }
 
             if (IsDev())
