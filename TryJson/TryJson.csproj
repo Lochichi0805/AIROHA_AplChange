@@ -53,6 +53,7 @@
     <Compile Include="LogService.cs" />
     <Compile Include="Models\AIROHA_MAPPING_ACCOUNT.cs" />
     <Compile Include="Models\NUP_UI_RenderData.cs" />
+    <Compile Include="Models\ResultObject.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
