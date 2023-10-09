@@ -30,14 +30,14 @@ namespace TryJson
                 string jsonStr = item.RenderData;
 
                 JToken json = JObject.Parse(jsonStr);
-                var rootProp = json["data"]; // 跳至根節點
+                var jtoken = json["data"]; // 跳至根節點
 
-                var resultList = ParseJson(dicAccount, jsonStr);
+                var resultList = ParseJson(item.RequisitionID, jtoken, dicAccount);
 
 
                 foreach (var result in resultList)
                 {
-                    Console.WriteLine($"{result.ColumnName} 可能包含工號，原始值為： {result.OrgValue} ，即將換成 {result.NewValue}");
+                    Console.WriteLine($"{result.Path} 可能包含工號，原始值為： {result.OrgValue} ，即將換成 {result.NewValue} ");
                 }
 
             }
@@ -52,22 +52,19 @@ namespace TryJson
         /// <summary>
         /// 找出 JSON 中是否有包含工號
         /// </summary>
+        /// <param name="reqID"></param>
         /// <param name="dicAccountMapping"></param>
-        /// <param name="jsonStr"></param>
+        /// <param name="jtoken"></param>
         /// <returns></returns>
-        private static IEnumerable<ResultObject> ParseJson(Dictionary<string, string> dicAccountMapping, string jsonStr)
+        private static IEnumerable<ResultObject> ParseJson(string reqID, JToken jtoken, Dictionary<string, string> dicAccountMapping)
         {
-            JToken json = JObject.Parse(jsonStr);
-            var rootProp = json["data"]; // 跳至根節點
-
-
-            foreach (JToken item in rootProp)
+            foreach (JToken item in jtoken)
             {
                 string name = string.Empty;
                 string path = string.Empty;
                 string val = string.Empty;
 
-                if (item is JProperty)
+                if (item.Type == JTokenType.Property)
                 {
                     JProperty prop = item as JProperty;
                     name = prop.Name;
@@ -77,111 +74,164 @@ namespace TryJson
                     if (prop.Value.Type == JTokenType.String)
                     {
                         val = (string)prop.Value;
+                        if (dicAccountMapping.ContainsKey(val))
+                        {
+                            var newVal = dicAccountMapping[val];
+                            var model = new ResultObject()
+                            {
+                                ReqID = reqID,
+                                Path = path,
+                                ColumnName = name,
+                                OrgValue = val,
+                                NewValue = newVal
+                            };
+
+                            yield return model;
+                        }
                     }
                     // 解析陣列
                     else if (prop.Value.Type == JTokenType.Array)
                     {
-                        val = prop.Value.ToString();
+                        foreach (var subItem in prop.Value)
+                        {
+                            // 一般欄位是否包含工號的判斷
+                            if (subItem.Type == JTokenType.String)
+                            {
+                                if (dicAccountMapping.ContainsKey(val))
+                                {
+                                    var newVal = dicAccountMapping[val];
+                                    var model = new ResultObject(reqID, path, name, val, newVal);
+
+                                    yield return model;
+                                }
+                            }
+                            else
+                            {
+                                var tempResultEnm = ParseJson(reqID, subItem, dicAccountMapping).ToList();
+                                foreach (var subModel in tempResultEnm)
+                                {
+                                    yield return subModel;
+                                }
+                            }
+                        }
                     }
                     // 解析物件
                     else if (prop.Value.Type == JTokenType.Object)
                     {
-                        val = prop.Value.ToString();
+                        foreach (var subItem in prop.Value)
+                        {
+                            var tempResultEnm = ParseJson(reqID, subItem, dicAccountMapping).ToList();
+                            foreach (var subModel in tempResultEnm)
+                            {
+                                yield return subModel;
+                            }
+                        }
                     }
+                }
+                else if (item.Type == JTokenType.String)
+                {
+                    path = item.Path;
+                    val = item.ToString();
 
                     // 一般欄位是否包含工號的判斷
                     if (dicAccountMapping.ContainsKey(val))
                     {
                         var newVal = dicAccountMapping[val];
-
-                        var model = new ResultObject()
-                        {
-                            Path = path,
-                            ColumnName = name,
-                            OrgValue = val,
-                            NewValue = newVal
-                        };
+                        var model = new ResultObject(reqID, path, name, val, newVal);
 
                         yield return model;
                     }
+                }
+                else if (item.Type == JTokenType.Object)
+                {
+                    foreach (var subItem in item)
+                    {
+                        var tempResultEnm = ParseJson(reqID, subItem, dicAccountMapping).ToList();
+                        foreach (var subModel in tempResultEnm)
+                        {
+                            yield return subModel;
+                        }
+                    }
+                }
+                else if (item.Type == JTokenType.Array)
+                {
+                    foreach (var subItem in item)
+                    {
+                        // 一般欄位是否包含工號的判斷
+                        if (subItem.Type == JTokenType.String)
+                        {
+                            if (dicAccountMapping.ContainsKey(val))
+                            {
+                                var newVal = dicAccountMapping[val];
+                                var model = new ResultObject(reqID, path, name, val, newVal);
 
+                                yield return model;
+                            }
+                        }
+                        else
+                        {
+                            var tempResultEnm = ParseJson(reqID, subItem, dicAccountMapping).ToList();
+                            foreach (var subModel in tempResultEnm)
+                            {
+                                yield return subModel;
+                            }
+                        }
+                    }
                 }
             }
+        }
 
 
-            //foreach (dynamic item in rootProp)
-            //{
-            //    var path = item.Path;
-            //    var key = item.Name;
+        private static IEnumerable<ResultObject> ParseJsonObject(string reqID, JToken jtoken, Dictionary<string, string> dicAccountMapping)
+        {
+            foreach (JToken item in jtoken)
+            {
+                string name = string.Empty;
+                string path = string.Empty;
+                string val = string.Empty;
 
-            //    var value = rootProp[key];
-            //    var t = value.Type;
+                JObject obj = item as JObject;
 
-            //    var valTemp = item.Value;
-            //    var type = valTemp.Type;
+                // 解析物件
+                foreach (var subItem in obj)
+                {
+                    if (subItem is JProperty)
+                    {
+                        JProperty prop = item as JProperty;
+                        name = prop.Name;
+                        path = prop.Path;
 
-            //    // 物件型態時，會是 NULL
-            //    if (type != null)
-            //    {
-            //        switch ((JTokenType)type)
-            //        {
-            //            case JTokenType.Object:
-            //                Console.WriteLine($"{key} is Object");
+                        // 解析一般欄位
+                        if (prop.Value.Type == JTokenType.String)
+                        {
+                            val = (string)prop.Value;
+                        }
 
-            //                break;
-            //            case JTokenType.Array:
-            //                Console.WriteLine($"{key} is Array");
-            //                break;
-            //            case JTokenType.String:
-            //                Console.WriteLine($"{key} is string");
-            //                break;
-            //            default:
-            //                break;
-            //        }
-            //    }
-            //    else
-            //    {
+                        // 一般欄位是否包含工號的判斷
+                        if (dicAccountMapping.ContainsKey(val))
+                        {
+                            var newVal = dicAccountMapping[val];
+                            var model = new ResultObject()
+                            {
+                                ReqID = reqID,
+                                Path = path,
+                                ColumnName = name,
+                                OrgValue = val,
+                                NewValue = newVal
+                            };
 
-            //    }
-
-
-            //    string val = string.Empty;
-            //    if (valTemp != null)
-            //        val = valTemp.ToString();
-
-
-
-
-            //    // 一般欄位是否包含工號的判斷
-            //    if (dicAccountMapping.ContainsKey(val))
-            //    {
-            //        var newVal = dicAccountMapping[val];
-
-            //        yield return new ResultObject()
-            //        {
-            //            Path = path,
-            //            ColumnName = key,
-            //            OrgValue = val,
-            //            NewValue = newVal
-            //        };
-            //    }
-
-            //    // 解析陣列物件
-            //    // 解析子物件
-            //    // 解析是個陣列的字串
-            //    // 解析是個子物件的字串
-            //}
-
+                            yield return model;
+                        }
+                    }
+                }
+            }
         }
 
 
         #region Read DB
         private static string GetFakeData()
         {
-
-
-
-            return " {\"data\":{\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"applicantInfoScope\":{\"data\":{\"processID\":\"Start01\",\"applicantID\":\"60243\",\"applicantName\":\"Rita Cheng (鄭曉男)\",\"applicantDept\":\"ARHT, CS/SSP/LS\",\"applicantDeptID\":\"50232060\",\"site\":\"\",\"extensionNumber\":\"64861\",\"costCenter\":\"AH103711\",\"isShowChangeApplicantButton\":\"0\",\"isShowCostcenter\":\"0\",\"applicantInfoSite\":\"ARHT\",\"isEnglish\":\"1\",\"tabTitle\":\"Applicant Information\",\"Deptname\":\"\"},\"failedVerification\":{},\"bpm\":{}},\"site\":\"ARHT\",\"system\":\"ARHT\",\"isOpen\":\"0\",\"subject\":\"\",\"extensionNumber\":\"\",\"isShowUploadButton\":\"0\",\"isShowChangeApplicantButton\":\"0\",\"subCustomerType\":\"Z003\",\"customerType\":\"Z001\",\"relProductCodeList\":\"[\\\"EN8801SIN/ACC-ECU-L\\\"]\",\"notERsSite\":\"ARHT\",\"customerSalesSite\":\"ARHT\",\"optionSite\":\"ARHT\",\"contactMemberGroup\":\"Andy Weng (翁子超)(Ext.18059)\",\"pqeList\":\"60150\",\"ppList\":\"61076\",\"pqeIsInApproveHistory\":\"0\",\"pqeDepartment\":\"50217025\",\"projectLeaderIsInApproveHistory\":\"0\",\"salesIsInApproveHistory\":\"0\",\"peEngineerIsInApproveHistory\":\"0\",\"ptEngineerIsInApproveHistory\":\"0\",\"teEngineerIsInApproveHistory\":\"0\",\"saEngineerIsInApproveHistory\":\"0\",\"firstCheck\":\"1\",\"FromProductCodedata\":\"\",\"MApplicantName\":\"Rita Cheng (鄭曉男)\",\"MApplicantID\":\"60243\",\"MApplicantDeptName\":\"CS/SSP/LS\",\"MApplicantDept\":\"50232060\",\"checkReleaseInformaiton\":\"\",\"hidden1\":\"\",\"pqeSpace\":[{\"pqeEngineerID\":\"60150\",\"pqeEngineer\":\"Andy Weng (翁子超)\"}],\"pqeCheck\":\"\",\"returnMsg\":\"\",\"projectLeaderCheck\":\"\",\"salesCheck\":\"\",\"peEngineerCheck\":\"\",\"ptEngineerCheck\":\"\",\"teEngineerCheck\":\"\",\"cpmCheck\":\"\",\"cqeEngineerCheck\":\"\",\"spacePP\":[{\"ppID\":\"61076\",\"pp\":\"Lucas-L Lee (李國玄)\"}],\"ppCheck\":\"\",\"space58\":[{\"guid\":\"3ed6a9e0-8c1d-4c8b-ae98-a322b2bc3cbe\",\"releaseInformationList\":\"[{\\\"fromProductCode\\\":\\\"\\\",\\\"lotHashtag\\\":\\\"CMKW62M-11B1B1\\\",\\\"lotQty\\\":\\\"10\\\",\\\"customer\\\":\\\"100463\\\",\\\"subCustomer\\\":\\\"\\\"}]\",\"Release_Info_No_D\":\"1\",\"space21\":[],\"table4\":{\"head\":[{}],\"body\":[{\"guid\":\"5d2030de-ece6-491c-9015-5d464465acae\",\"Release_Info_No_D3\":\"1\",\"lotHashtag\":\"CMKW62M-11B1B1\",\"lotQty\":\"10\"}],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"lotCheck\":\"\",\"relNote\":\"\",\"table2\":{\"head\":[{}],\"body\":[{\"guid\":\"aef64411-273a-4e45-b213-1c2d5c9dcdd7\",\"Release_Info_No_D4\":\"1\",\"customer\":\"100463\"}],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"customerCheck\":\"\",\"dateCodeFrom\":\"\",\"dateCodeTo\":\"\",\"relProductCode\":\"EN8801SIN/ACC-ECU-L\",\"validPeriodFrom\":\"2023-09-28\",\"validPeriodTo\":\"2023-10-27\"}],\"requestTitle\":\"出貨解605 hold (DN:8300051935)\",\"requestDescription\":\"Customer : 100463\",\"riskAssessment\":\"no risk\",\"projectLeaderID\":\"60914\",\"projectLeader\":\"Kangbo Hsu (徐康博)\",\"salesID\":\"60986\",\"sales\":\"Darian Chiu (邱奕銘)\",\"peEngineerID\":\"61521\",\"peEngineer\":\"Wayne-sw Chang (張書維)\",\"ptEngineerID\":\"60942\",\"ptEngineer\":\"James Chang (張程皓)\",\"teEngineerID\":\"60948\",\"teEngineer\":\"Shih-Lin Chen (陳世林)\",\"saEngineerID\":\"\",\"saEngineer\":\"\",\"cpmID\":\"60936\",\"cpm\":\"Chun-Hung Liu (劉峻宏)\",\"cqeEngineerID\":\"61229\",\"cqeEngineer\":\"Vica Yang (楊秀怡)\",\"uiLoader2\":{\"data\":{\"isShowUploadButton\":\"0\",\"isEnglish\":\"1\",\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"uploadStep\":\"RtSpcLst07\",\"uploadIdentify\":\"AIROHA12\",\"isRequireAttachment\":\"\",\"uploadStepName\":\"\",\"requisitionID\":\"\",\"diagramID\":\"AIROHA12\",\"fileListName\":\"\",\"place20\":\"\",\"draftFlag\":0,\"fileList\":{\"head\":[{}],\"body\":[],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"input1\":\"\",\"uploader\":\"60117\",\"uploaderName\":\"LY Chen (陳亮宇)\",\"identify\":\"\",\"tabTitle\":\"Attachment\"},\"failedVerification\":{},\"bpm\":{},\"preloadData\":{\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"applicantID\":\"60243\",\"applicantName\":\"Rita Cheng (鄭曉男)\",\"processID\":\"RtSpcLst07\",\"identify\":\"AIROHA12\",\"diagramID\":\"AIROHA12\",\"isShowUploadButton\":\"0\"}},\"category\":\"ER\",\"checkbox1\":[\"1\"],\"requestPurpose\":\"rdDevelopment\",\"company\":\"ARHT\",\"erProductCode\":\"EN8801SIN/ACC-ECU-L\",\"requestDescription3\":\"\",\"others\":\"\",\"eFuseProgramIsReady\":\"Y\",\"fwIsReadyAtCustomerSites\":\"Y\",\"passCustomersProductionLineTest\":\"Y\",\"needCustomerSpecialHandle\":\"N\",\"needProjectLeader\":\"\",\"needSales\":\"\",\"needPeEngineer\":\"\",\"needPtEngineer\":\"\",\"needTeEngineer\":\"\",\"needSaEngineer\":\"\"},\"failedVerification\":{},\"bpm\":{},\"preloadData\":{}}";
+            return " {\"data\":{\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"applicantInfoScope\":{\"data\":{\"processID\":\"Start01\",\"applicantID\":\"60243\",\"applicantName\":\"Rita Cheng (鄭曉男)\",\"applicantDept\":\"ARHT, CS/SSP/LS\",\"applicantDeptID\":\"50232060\",\"site\":\"\",\"extensionNumber\":\"64861\",\"costCenter\":\"AH103711\",\"isShowChangeApplicantButton\":\"0\",\"isShowCostcenter\":\"0\",\"applicantInfoSite\":\"ARHT\",\"isEnglish\":\"1\",\"tabTitle\":\"Applicant Information\",\"Deptname\":\"\"},\"failedVerification\":{},\"bpm\":{}},\"site\":\"ARHT\",\"system\":\"ARHT\",\"isOpen\":\"0\",\"subject\":\"\",\"extensionNumber\":\"\",\"isShowUploadButton\":\"0\",\"isShowChangeApplicantButton\":\"0\",\"subCustomerType\":\"Z003\",\"customerType\":\"Z001\",\"relProductCodeList\":\"[\\\"EN8801SIN/ACC-ECU-L\\\"]\",\"notERsSite\":\"ARHT\",\"customerSalesSite\":\"ARHT\",\"optionSite\":\"ARHT\",\"contactMemberGroup\":\"Andy Weng (翁子超)(Ext.18059)\",\"pqeList\":\"60150\",\"ppList\":\"61076\",\"pqeIsInApproveHistory\":\"0\",\"pqeDepartment\":\"50217025\",\"projectLeaderIsInApproveHistory\":\"0\",\"salesIsInApproveHistory\":\"0\",\"peEngineerIsInApproveHistory\":\"0\",\"ptEngineerIsInApproveHistory\":\"0\",\"teEngineerIsInApproveHistory\":\"0\",\"saEngineerIsInApproveHistory\":\"0\",\"firstCheck\":\"1\",\"FromProductCodedata\":\"\",\"MApplicantName\":\"Rita Cheng (鄭曉男)\",\"MApplicantID\":\"60243\",\"MApplicantDeptName\":\"CS/SSP/LS\",\"MApplicantDept\":\"50232060\",\"checkReleaseInformaiton\":\"\",\"hidden1\":\"\",\"pqeSpace\":[{\"pqeEngineerID\":\"60150\",\"pqeEngineer\":\"Andy Weng (翁子超)\"}],\"pqeSpace2\":{\"pqeEngineerID\":\"60150\",\"pqeEngineer\":\"Andy Weng (翁子超)\"},\"pqeCheck\":\"\",\"returnMsg\":\"\",\"projectLeaderCheck\":\"\",\"salesCheck\":\"\",\"peEngineerCheck\":\"\",\"ptEngineerCheck\":\"\",\"teEngineerCheck\":\"\",\"cpmCheck\":\"\",\"cqeEngineerCheck\":\"\",\"spacePP\":[{\"ppID\":\"61076\",\"pp\":\"Lucas-L Lee (李國玄)\"}],\"ppCheck\":\"\",\"space58\":[{\"guid\":\"3ed6a9e0-8c1d-4c8b-ae98-a322b2bc3cbe\",\"releaseInformationList\":\"[{\\\"fromProductCode\\\":\\\"\\\",\\\"lotHashtag\\\":\\\"CMKW62M-11B1B1\\\",\\\"lotQty\\\":\\\"10\\\",\\\"customer\\\":\\\"100463\\\",\\\"subCustomer\\\":\\\"\\\"}]\",\"Release_Info_No_D\":\"1\",\"space21\":[],\"table4\":{\"head\":[{}],\"body\":[{\"guid\":\"5d2030de-ece6-491c-9015-5d464465acae\",\"Release_Info_No_D3\":\"1\",\"lotHashtag\":\"CMKW62M-11B1B1\",\"lotQty\":\"10\"}],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"lotCheck\":\"\",\"relNote\":\"\",\"table2\":{\"head\":[{}],\"body\":[{\"guid\":\"aef64411-273a-4e45-b213-1c2d5c9dcdd7\",\"Release_Info_No_D4\":\"1\",\"customer\":\"100463\"}],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"customerCheck\":\"\",\"dateCodeFrom\":\"\",\"dateCodeTo\":\"\",\"relProductCode\":\"EN8801SIN/ACC-ECU-L\",\"validPeriodFrom\":\"2023-09-28\",\"validPeriodTo\":\"2023-10-27\"}],\"requestTitle\":\"出貨解605 hold (DN:8300051935)\",\"requestDescription\":\"Customer : 100463\",\"riskAssessment\":\"no risk\",\"projectLeaderID\":\"60914\",\"projectLeader\":\"Kangbo Hsu (徐康博)\",\"salesID\":\"60986\",\"sales\":\"Darian Chiu (邱奕銘)\",\"peEngineerID\":\"61521\",\"peEngineer\":\"Wayne-sw Chang (張書維)\",\"ptEngineerID\":\"60942\",\"ptEngineer\":\"James Chang (張程皓)\",\"teEngineerID\":\"60948\",\"teEngineer\":\"Shih-Lin Chen (陳世林)\",\"saEngineerID\":\"\",\"saEngineer\":\"\",\"cpmID\":\"60936\",\"cpm\":\"Chun-Hung Liu (劉峻宏)\",\"cqeEngineerID\":\"61229\",\"cqeEngineer\":\"Vica Yang (楊秀怡)\",\"uiLoader2\":{\"data\":{\"isShowUploadButton\":\"0\",\"isEnglish\":\"1\",\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"uploadStep\":\"RtSpcLst07\",\"uploadIdentify\":\"AIROHA12\",\"isRequireAttachment\":\"\",\"uploadStepName\":\"\",\"requisitionID\":\"\",\"diagramID\":\"AIROHA12\",\"fileListName\":\"\",\"place20\":\"\",\"draftFlag\":0,\"fileList\":{\"head\":[{}],\"body\":[],\"bodyAttr\":{\"pageIndex\":1,\"pageSize\":0}},\"input1\":\"\",\"uploader\":\"60117\",\"uploaderName\":\"LY Chen (陳亮宇)\",\"identify\":\"\",\"tabTitle\":\"Attachment\"},\"failedVerification\":{},\"bpm\":{},\"preloadData\":{\"fileID\":\"79ab6fff-86ee-444c-a374-f230af63b9c8\",\"applicantID\":\"60243\",\"applicantName\":\"Rita Cheng (鄭曉男)\",\"processID\":\"RtSpcLst07\",\"identify\":\"AIROHA12\",\"diagramID\":\"AIROHA12\",\"isShowUploadButton\":\"0\"}},\"category\":\"ER\",\"checkbox1\":[\"1\"],\"requestPurpose\":\"rdDevelopment\",\"company\":\"ARHT\",\"erProductCode\":\"EN8801SIN/ACC-ECU-L\",\"requestDescription3\":\"\",\"others\":\"\",\"eFuseProgramIsReady\":\"Y\",\"fwIsReadyAtCustomerSites\":\"Y\",\"passCustomersProductionLineTest\":\"Y\",\"needCustomerSpecialHandle\":\"N\",\"needProjectLeader\":\"\",\"needSales\":\"\",\"needPeEngineer\":\"\",\"needPtEngineer\":\"\",\"needTeEngineer\":\"\",\"needSaEngineer\":\"\"},\"failedVerification\":{},\"bpm\":{},\"preloadData\":{}} ";
         }
 
 
