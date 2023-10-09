@@ -14,7 +14,7 @@ namespace TryJson
 {
     internal class Program
     {
-     
+
         static void Main(string[] args)
         {
             // 讀取工號對照表
@@ -68,23 +68,36 @@ namespace TryJson
                 Console.WriteLine($"讀取資料：{item.RequisitionID} ({item.BPMProfileUniqueID})");
 
                 string jsonStr = item.RenderData;
-
-                JToken json = JObject.Parse(jsonStr);
-                var jtoken = json["data"]; // 跳至根節點
+                JToken root = JObject.Parse(jsonStr);
+                var jtoken = root["data"]; // 跳至根節點
 
                 // 解析 JSON ，並取得要替換的目標
                 var resultList = ParseJson(item.RequisitionID, jtoken, dicAccount);
                 foreach (var result in resultList)
                 {
                     Console.WriteLine($"{result.Path} 可能包含工號，原始值為： {result.OrgValue} ，即將換成 {result.NewValue} ");
+
+                    var token = root.SelectToken(result.Path);
+                    if (token != null && token is JValue)
+                    {
+                        JValue jval = (JValue)token;
+                        jval.Value = result.NewValue;
+                    }
                 }
 
 
                 // 回寫 RenderData
                 // 開發版不回寫
-                if (!IsDev())
+                if (IsDev())
                 {
-                    //WriteNupRenderData(item);
+                    var writeVal = root.ToString();
+                    Console.WriteLine(writeVal);
+                }
+                else
+                {
+                    var writeVal = root.ToString(Formatting.None);
+                    item.RenderData = writeVal;
+                    WriteNupRenderData(item);
                 }
             }
 
