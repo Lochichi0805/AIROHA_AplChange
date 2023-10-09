@@ -17,10 +17,15 @@ namespace TryJson
         static void Main(string[] args)
         {
             // 讀取工號對照表
+            Console.WriteLine("Load account mapping started.");
             var dicAccount = ReadAccountMappingList();
+            Console.WriteLine("Load account mapping completed. Loaded Rows: " + dicAccount.Count);
 
             // 讀取 NUP_UI_RenderData 
+            Console.WriteLine("Load RenderData started.");
             var renderList = ReadRenderDataList();
+            Console.WriteLine("Load RenderData completed. Loaded Rows: " + renderList.Count);
+            Console.WriteLine();
 
             // 每筆資料都執行一次，檢查是否要替換
             foreach (var item in renderList)
